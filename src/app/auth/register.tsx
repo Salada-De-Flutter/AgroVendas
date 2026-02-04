@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { API_ENDPOINTS } from '../../config/api';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -41,27 +42,43 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
-      // TODO: Implementar lógica de cadastro real
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Enviando cadastro para:', API_ENDPOINTS.AUTH.REGISTER);
       
-      console.log('Cadastro realizado:', { name, email });
-      
-      // Sucesso no cadastro
-      setSuccessMessage('Cadastro realizado com sucesso!');
-      
-      // Limpar campos
-      setName('');
-      setEmail('');
-      setPassword('');
-      setConfirmPassword('');
+      const response = await fetch(API_ENDPOINTS.AUTH.REGISTER, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nome: name,
+          email: email,
+          senha: password,
+        }),
+      });
 
-      // Redirecionar para login após 2 segundos
-      setTimeout(() => {
-        router.back();
-      }, 2000);
+      const data = await response.json();
+      console.log('Resposta do cadastro:', data);
+
+      if (response.ok && data.sucesso) {
+        console.log('✅ Cadastro realizado com sucesso!');
+        setSuccessMessage(data.mensagem || 'Cadastro realizado com sucesso!');
+        
+        // Limpar campos
+        setName('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+
+        // Redirecionar para login após 2 segundos
+        setTimeout(() => {
+          router.back();
+        }, 2000);
+      } else {
+        setErrorMessage(data.mensagem || 'Erro ao realizar cadastro');
+      }
     } catch (error: any) {
       console.error('Erro ao cadastrar:', error);
-      setErrorMessage(error.message || 'Erro ao realizar cadastro');
+      setErrorMessage('Erro de conexão. Verifique sua internet.');
     } finally {
       setLoading(false);
     }

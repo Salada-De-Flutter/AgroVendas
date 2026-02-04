@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { API_ENDPOINTS } from '../../config/api';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -22,17 +23,33 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      // TODO: Implementar lógica de autenticação real
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Enviando login para:', API_ENDPOINTS.AUTH.LOGIN);
       
-      // Simulação de login
-      console.log('Login realizado com:', email);
-      
-      // Redirecionar para tela principal após login bem-sucedido
-      // router.replace('/(app)/home');
-      alert('Login realizado com sucesso!');
+      const response = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          senha: password,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('Resposta do login:', data);
+
+      if (response.ok && data.sucesso) {
+        console.log('✅ Login realizado com sucesso!');
+        // TODO: Salvar token e dados do usuário
+        // router.replace('/(app)/home');
+        alert('Login realizado com sucesso!');
+      } else {
+        setErrorMessage(data.mensagem || 'Credenciais inválidas');
+      }
     } catch (error: any) {
-      setErrorMessage(error.message || 'Erro ao fazer login');
+      console.error('Erro ao fazer login:', error);
+      setErrorMessage('Erro de conexão. Verifique sua internet.');
     } finally {
       setLoading(false);
     }
