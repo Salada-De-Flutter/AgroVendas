@@ -1,63 +1,27 @@
 const { execSync } = require('child_process');
 
-// Pegar argumento (dev ou prod)
-// process.argv[2] é o primeiro argumento passado para o script
-const env = process.argv[2];
+// Pegar todos os argumentos
+const args = process.argv.slice(2);
+const mode = args[0]; // 'dev' ou 'prod'
+const hasTunnel = args.includes('--tunnel') || args.includes('-t');
 
-// Se não passou argumento, usar prod como padrão
-const mode = (env === 'dev') ? 'dev' : 'prod';
-
-// Definir qual arquivo .env usar
-let envFile;
-let envName;
-
-if (mode === 'dev') {
-  envFile = '.env.development';
-  envName = 'DESENVOLVIMENTO (localhost)';
+// Configurar ambiente
+if (mode === 'prod') {
+  console.log('\n🚀 Modo PRODUÇÃO - Usando API: https://api.agrosystemapp.com/api\n');
+  process.env.EXPO_PUBLIC_USE_PROD_API = 'true';
 } else {
-  envFile = '.env.production';
-  envName = 'PRODUÇÃO (api.agrosystemapp.com)';
+  console.log('\n🛠️  Modo DESENVOLVIMENTO - Usando API: http://localhost:3000/api\n');
+  process.env.EXPO_PUBLIC_USE_PROD_API = 'false';
 }
 
-console.log(`\n🚀 AgroVendas - Iniciando em modo ${envName}\n`);
+// Montar comando
+const tunnelFlag = hasTunnel ? ' --tunnel' : '';
+const command = `npx expo start --clear${tunnelFlag}`;
 
-// Copiar o arquivo .env correto
-const fs = require('fs');
-const path = require('path');
+console.log(`Executando: ${command}\n`);
 
-const sourceFile = path.join(__dirname, '..', envFile);
-const targetFile = path.join(__dirname, '..', '.env');
-
-if (fs.existsSync(sourceFile)) {
-  const content = fs.readFileSync(sourceFile, 'utf8');
-  fs.writeFileSync(targetFile, content);
-  
-  // Remover .env.development e .env.production temporariamente para forçar uso do .env
-  const devFile = path.join(__dirname, '..', '.env.development');
-  const prodFile = path.join(__dirname, '..', '.env.production');
-  const devBackup = path.join(__dirname, '..', '.env.development.backup');
-  const prodBackup = path.join(__dirname, '..', '.env.production.backup');
-  
-  if (fs.existsSync(devFile)) fs.renameSync(devFile, devBackup);
-  if (fs.existsSync(prodFile)) fs.renameSync(prodFile, prodBackup);
-  
-  console.log(`✅ Usando configurações de ${mode === 'dev' ? 'desenvolvimento' : 'produção'}\n`);
-} else {
-  console.log(`⚠️  Arquivo ${envFile} não encontrado, usando configuração padrão\n`);
-}
-
-// Iniciar o Expo
-try {
-  execSync('npx expo start --clear', { stdio: 'inherit' });
-} catch (error) {
-  console.error('Erro ao iniciar o Expo:', error);
-} finally {
-  // Restaurar arquivos .env.development e .env.production
-  const devBackup = path.join(__dirname, '..', '.env.development.backup');
-  const prodBackup = path.join(__dirname, '..', '.env.production.backup');
-  const devFile = path.join(__dirname, '..', '.env.development');
-  const prodFile = path.join(__dirname, '..', '.env.production');
-  
-  if (fs.existsSync(devBackup)) fs.renameSync(devBackup, devFile);
-  if (fs.existsSync(prodBackup)) fs.renameSync(prodBackup, prodFile);
-}
+// Executar
+execSync(command, { 
+  stdio: 'inherit',
+  env: { ...process.env }
+});

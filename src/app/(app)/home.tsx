@@ -187,111 +187,30 @@ export default function HomeScreen() {
         </View>
 
         {/* Conteúdo */}
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Visão Geral */}
-          <Text style={styles.sectionTitle}>Visão Geral</Text>
-
-          {/* Card Vendas do Mês */}
-          <View style={[styles.metricCard, styles.metricCardLarge, { borderTopColor: '#4CAF50' }]}>
-            <View style={styles.cardHeader}>
-              <Ionicons name="trending-up" size={24} color="#4CAF50" />
-              <Text style={styles.metricLabel}>Vendas do Mês</Text>
-            </View>
-            <Text style={styles.metricValueLarge}>R$ 12.450,00</Text>
-            <Text style={styles.metricSubtext}>+15% em relação ao mês passado</Text>
+        <ScrollView 
+          style={styles.content} 
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Mensagem de Boas-vindas */}
+          <View style={styles.welcomeCard}>
+            <Ionicons name="cart" size={48} color="#4CAF50" />
+            <Text style={styles.welcomeTitle}>Bem-vindo ao AgroVendas</Text>
+            <Text style={styles.welcomeText}>
+              Comece adicionando seus clientes
+            </Text>
           </View>
 
-          {/* Cards em 2 colunas */}
-          <View style={styles.metricsRow}>
-            <View style={[styles.metricCard, styles.metricCardHalf, { borderTopColor: '#2196F3' }]}>
-              <View style={styles.cardHeaderSmall}>
-                <Ionicons name="cart" size={20} color="#2196F3" />
-                <Text style={styles.metricLabel}>Vendas</Text>
-              </View>
-              <Text style={styles.metricValueMedium}>47</Text>
-              <Text style={styles.metricSubtext}>Este mês</Text>
+          {/* Ação Principal */}
+          <TouchableOpacity style={styles.mainActionButton} onPress={() => router.push('/(app)/clientes/adicionar')}>
+            <View style={styles.mainActionIcon}>
+              <Ionicons name="person-add" size={32} color="#ffffff" />
             </View>
-
-            <View style={[styles.metricCard, styles.metricCardHalf, { borderTopColor: '#FF9800' }]}>
-              <View style={styles.cardHeaderSmall}>
-                <Ionicons name="people" size={20} color="#FF9800" />
-                <Text style={styles.metricLabel}>Clientes</Text>
-              </View>
-              <Text style={styles.metricValueMedium}>23</Text>
-              <Text style={styles.metricSubtext}>Ativos</Text>
+            <View style={styles.mainActionContent}>
+              <Text style={styles.mainActionTitle}>Adicionar Novo Cliente</Text>
+              <Text style={styles.mainActionSubtitle}>Cadastrar um cliente no sistema</Text>
             </View>
-          </View>
-
-          {/* Produtos Mais Vendidos */}
-          <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Produtos Mais Vendidos</Text>
-          
-          <View style={styles.productCard}>
-            <View style={styles.productIcon}>
-              <Ionicons name="leaf" size={28} color="#4CAF50" />
-            </View>
-            <View style={styles.productInfo}>
-              <Text style={styles.productName}>Fertilizante NPK</Text>
-              <Text style={styles.productQuantity}>85 unidades vendidas</Text>
-            </View>
-            <Text style={styles.productValue}>R$ 3.400</Text>
-          </View>
-
-          <View style={styles.productCard}>
-            <View style={styles.productIcon}>
-              <Ionicons name="water" size={28} color="#2196F3" />
-            </View>
-            <View style={styles.productInfo}>
-              <Text style={styles.productName}>Adubo Orgânico</Text>
-              <Text style={styles.productQuantity}>62 unidades vendidas</Text>
-            </View>
-            <Text style={styles.productValue}>R$ 2.480</Text>
-          </View>
-
-          <View style={styles.productCard}>
-            <View style={styles.productIcon}>
-              <Ionicons name="bug" size={28} color="#FF5722" />
-            </View>
-            <View style={styles.productInfo}>
-              <Text style={styles.productName}>Defensivo Agrícola</Text>
-              <Text style={styles.productQuantity}>45 unidades vendidas</Text>
-            </View>
-            <Text style={styles.productValue}>R$ 2.250</Text>
-          </View>
-
-          {/* Ações Rápidas */}
-          <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Ações Rápidas</Text>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => {}}>
-            <View style={[styles.menuIconContainer, { backgroundColor: '#1a3a1a' }]}>
-              <Ionicons name="add-circle-outline" size={28} color="#4CAF50" />
-            </View>
-            <View style={styles.menuTextContainer}>
-              <Text style={styles.menuTitle}>Nova Venda</Text>
-              <Text style={styles.menuSubtitle}>Registrar uma nova venda</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => {}}>
-            <View style={[styles.menuIconContainer, { backgroundColor: '#1a3a1a' }]}>
-              <Ionicons name="person-add-outline" size={28} color="#4CAF50" />
-            </View>
-            <View style={styles.menuTextContainer}>
-              <Text style={styles.menuTitle}>Novo Cliente</Text>
-              <Text style={styles.menuSubtitle}>Cadastrar um novo cliente</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.menuItem} onPress={() => {}}>
-            <View style={[styles.menuIconContainer, { backgroundColor: '#1a3a1a' }]}>
-              <Ionicons name="cube-outline" size={28} color="#4CAF50" />
-            </View>
-            <View style={styles.menuTextContainer}>
-              <Text style={styles.menuTitle}>Estoque</Text>
-              <Text style={styles.menuSubtitle}>Gerenciar produtos em estoque</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
+            <Ionicons name="chevron-forward" size={28} color="#4CAF50" />
           </TouchableOpacity>
 
           <View style={{ height: 20 }} />
@@ -431,136 +350,66 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#ffffff',
-    marginTop: 4,
   },
   content: {
     flex: 1,
+  },
+  contentContainer: {
     padding: 20,
+    justifyContent: 'center',
+    flexGrow: 1,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 16,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 12,
-  },
-  metricCard: {
+  welcomeCard: {
     backgroundColor: '#2a2a2a',
-    padding: 16,
-    borderRadius: 12,
+    padding: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    marginBottom: 32,
     borderWidth: 1,
     borderColor: '#333',
-    borderTopWidth: 3,
   },
-  metricCardLarge: {
-    padding: 20,
-    marginBottom: 12,
-  },
-  metricCardHalf: {
-    flex: 1,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  cardHeaderSmall: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  welcomeTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginTop: 16,
     marginBottom: 8,
+    textAlign: 'center',
   },
-  metricLabel: {
-    fontSize: 12,
+  welcomeText: {
+    fontSize: 16,
     color: '#b0b0b0',
+    textAlign: 'center',
   },
-  metricValueLarge: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 8,
-  },
-  metricValueMedium: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  metricSubtext: {
-    fontSize: 12,
-    color: '#888',
-  },
-  productCard: {
+  mainActionButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#2a2a2a',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#333',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
   },
-  productIcon: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 25,
+  mainActionIcon: {
+    width: 60,
+    height: 60,
+    backgroundColor: '#4CAF50',
+    borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
-  productInfo: {
+  mainActionContent: {
     flex: 1,
   },
-  productName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  productQuantity: {
-    fontSize: 13,
-    color: '#b0b0b0',
-  },
-  productValue: {
-    fontSize: 16,
+  mainActionTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#4CAF50',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2a2a2a',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  menuIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  menuTextContainer: {
-    flex: 1,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontWeight: '600',
     color: '#ffffff',
     marginBottom: 4,
   },
-  menuSubtitle: {
-    fontSize: 13,
+  mainActionSubtitle: {
+    fontSize: 14,
     color: '#b0b0b0',
   },
   bottomMenu: {
