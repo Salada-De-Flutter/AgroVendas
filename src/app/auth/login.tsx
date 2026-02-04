@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { API_ENDPOINTS } from '../../config/api';
+import { StorageService } from '../../services/storage';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -41,9 +42,18 @@ export default function LoginScreen() {
 
       if (response.ok && data.sucesso) {
         console.log('✅ Login realizado com sucesso!');
-        // TODO: Salvar token e dados do usuário
-        // router.replace('/(app)/home');
-        alert('Login realizado com sucesso!');
+        
+        // Salvar token e dados do usuário
+        await StorageService.saveToken(data.token);
+        await StorageService.saveUser(data.usuario);
+        
+        console.log('Token e usuário salvos:', {
+          usuario: data.usuario.nome,
+          tipo: data.usuario.tipo
+        });
+        
+        // Redirecionar para tela principal
+        router.replace('/(app)/home');
       } else {
         setErrorMessage(data.mensagem || 'Credenciais inválidas');
       }

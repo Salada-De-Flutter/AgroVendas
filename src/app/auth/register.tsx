@@ -10,6 +10,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [userType, setUserType] = useState('vendedor'); // vendedor por padrão
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -53,6 +54,7 @@ export default function RegisterScreen() {
           nome: name,
           email: email,
           senha: password,
+          tipo_usuario: userType,
         }),
       });
 
@@ -71,7 +73,7 @@ export default function RegisterScreen() {
 
         // Redirecionar para login após 2 segundos
         setTimeout(() => {
-          router.back();
+          router.push('/auth/login');
         }, 2000);
       } else {
         setErrorMessage(data.mensagem || 'Erro ao realizar cadastro');
@@ -209,7 +211,7 @@ export default function RegisterScreen() {
           {/* Link Login */}
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Já tem uma conta? </Text>
-            <TouchableOpacity onPress={() => router.back()}>
+            <TouchableOpacity onPress={() => router.push('/auth/login')}>
               <Text style={styles.loginLink}>Entrar</Text>
             </TouchableOpacity>
           </View>
