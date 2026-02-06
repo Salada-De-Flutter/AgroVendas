@@ -3,9 +3,11 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { API_ENDPOINTS } from '../../config/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,16 +67,22 @@ export default function RegisterScreen() {
         console.log('✅ Cadastro realizado com sucesso!');
         setSuccessMessage(data.mensagem || 'Cadastro realizado com sucesso!');
         
+        // Se o backend retornar token, fazer login automático
+        if (data.token && data.usuario) {
+          await signIn(data.token, data.usuario);
+          // AuthContext vai redirecionar automaticamente
+        } else {
+          // Caso contrário, redirecionar para login após 2 segundos
+          setTimeout(() => {
+            router.push('/auth/login');
+          }, 2000);
+        }
+        
         // Limpar campos
         setName('');
         setEmail('');
         setPassword('');
         setConfirmPassword('');
-
-        // Redirecionar para login após 2 segundos
-        setTimeout(() => {
-          router.push('/auth/login');
-        }, 2000);
       } else {
         setErrorMessage(data.mensagem || 'Erro ao realizar cadastro');
       }

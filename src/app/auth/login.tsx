@@ -3,10 +3,11 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { API_ENDPOINTS } from '../../config/api';
-import { StorageService } from '../../services/storage';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,17 +44,15 @@ export default function LoginScreen() {
       if (response.ok && data.sucesso) {
         console.log('✅ Login realizado com sucesso!');
         
-        // Salvar token e dados do usuário
-        await StorageService.saveToken(data.token);
-        await StorageService.saveUser(data.usuario);
+        // Fazer login usando o contexto
+        await signIn(data.token, data.usuario);
         
         console.log('Token e usuário salvos:', {
           usuario: data.usuario.nome,
           tipo: data.usuario.tipo
         });
         
-        // Redirecionar para tela principal
-        router.replace('/(app)/home');
+        // AuthContext vai redirecionar automaticamente
       } else {
         setErrorMessage(data.mensagem || 'Credenciais inválidas');
       }

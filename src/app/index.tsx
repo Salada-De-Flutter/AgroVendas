@@ -1,10 +1,34 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { loading, isAuthenticated } = useAuth();
+
+  // Mostrar loading enquanto verifica autenticação
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.iconContainer}>
+          <Ionicons name="cart" size={80} color="#4CAF50" />
+        </View>
+        <ActivityIndicator size="large" color="#4CAF50" style={{ marginTop: 20 }} />
+        <Text style={styles.loadingText}>Carregando...</Text>
+      </View>
+    );
+  }
+
+  // Se já está autenticado, não mostrar nada (o AuthContext vai redirecionar)
+  if (isAuthenticated) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -75,5 +99,10 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 18,
     fontWeight: '600',
+  },
+  loadingText: {
+    color: '#b0b0b0',
+    fontSize: 16,
+    marginTop: 10,
   },
 });

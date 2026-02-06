@@ -19,6 +19,14 @@ export const API_ENDPOINTS = {
     CREATE: `${API_URL}/clientes`,
     UPDATE: (id: string) => `${API_URL}/clientes/${id}`,
     DELETE: (id: string) => `${API_URL}/clientes/${id}`,
+    SEND_VERIFICATION: `${API_URL}/clientes/enviar-verificacao`,
+  },
+  VENDAS: {
+    LIST: `${API_URL}/vendas`,
+    CREATE: `${API_URL}/vendas`,
+    UPDATE: (id: string) => `${API_URL}/vendas/${id}`,
+    DELETE: (id: string) => `${API_URL}/vendas/${id}`,
+    BY_CLIENTE: (clienteId: string) => `${API_URL}/vendas/cliente/${clienteId}`,
   },
 };
 

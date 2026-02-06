@@ -1,31 +1,22 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Animated, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { StorageService } from '../../services/storage';
+import { useAuth } from '../../contexts/AuthContext';
 
 const DRAWER_WIDTH = 280;
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [usuario, setUsuario] = useState<any>(null);
+  const { user, signOut } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
   
   const drawerTranslateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    carregarUsuario();
-  }, []);
-
-  const carregarUsuario = async () => {
-    const user = await StorageService.getUser();
-    setUsuario(user);
-  };
-
   const handleLogout = async () => {
-    await StorageService.clearAll();
-    router.replace('/');
+    closeDrawer();
+    await signOut();
   };
 
   const openDrawer = () => {
@@ -164,7 +155,7 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.drawerItem} onPress={() => { closeDrawer(); handleLogout(); }}>
+          <TouchableOpacity style={styles.drawerItem} onPress={handleLogout}>
             <View style={[styles.drawerIconContainer, { backgroundColor: '#3a1a1a' }]}>
               <Ionicons name="log-out-outline" size={24} color="#ff4444" />
             </View>
@@ -182,7 +173,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greeting}>Olá,</Text>
-            <Text style={styles.userName}>{usuario?.nome || 'Vendedor'}</Text>
+            <Text style={styles.userName}>{user?.nome || 'Vendedor'}</Text>
           </View>
         </View>
 
@@ -211,6 +202,18 @@ export default function HomeScreen() {
               <Text style={styles.mainActionSubtitle}>Cadastrar um cliente no sistema</Text>
             </View>
             <Ionicons name="chevron-forward" size={28} color="#4CAF50" />
+          </TouchableOpacity>
+
+          {/* Nova Venda */}
+          <TouchableOpacity style={styles.secondaryActionButton} onPress={() => router.push('/(app)/vendas/selecionar-cliente')}>
+            <View style={[styles.mainActionIcon, { backgroundColor: '#2196F3' }]}>
+              <Ionicons name="cart" size={32} color="#ffffff" />
+            </View>
+            <View style={styles.mainActionContent}>
+              <Text style={styles.mainActionTitle}>Nova Venda</Text>
+              <Text style={styles.mainActionSubtitle}>Registrar uma venda</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={28} color="#2196F3" />
           </TouchableOpacity>
 
           <View style={{ height: 20 }} />
@@ -389,6 +392,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#4CAF50',
+  },
+  secondaryActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#2196F3',
   },
   mainActionIcon: {
     width: 60,

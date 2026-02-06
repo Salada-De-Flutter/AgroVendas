@@ -140,59 +140,23 @@ export default function AddClientScreen() {
       return;
     }
 
-    setLoading(true);
+    // Gerar código de verificação de 6 dígitos
+    const codigoVerificacao = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    console.log('Código de verificação gerado:', codigoVerificacao);
 
-    try {
-      // TODO: Implementar chamada para API com FormData para enviar a imagem
-      const formData = new FormData();
-      formData.append('nome', nome);
-      formData.append('documento', documento.replace(/\D/g, '')); // Remove formatação
-      formData.append('telefone', telefone.replace(/\D/g, '')); // Remove formatação
-      formData.append('endereco', endereco);
-      
-      // Adiciona a foto
-      if (fotoDocumento) {
-        const filename = fotoDocumento.split('/').pop() || 'document.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        
-        formData.append('fotoDocumento', {
-          uri: fotoDocumento,
-          name: filename,
-          type: type,
-        } as any);
-      }
-      
-      // Simulação - em produção trocar por fetch para API
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      console.log('Cliente cadastrado:', { 
-        nome, 
-        documento, 
-        telefone, 
+    // Navegar para tela de escolha de método de envio
+    router.push({
+      pathname: '/(app)/clientes/metodo-verificacao',
+      params: {
+        nome,
+        documento,
+        telefone,
         endereco,
-        fotoDocumento: fotoDocumento ? 'anexada' : 'não anexada'
-      });
-      
-      setSuccessMessage('Cliente cadastrado com sucesso!');
-      
-      // Limpar campos
-      setNome('');
-      setDocumento('');
-      setTelefone('');
-      setEndereco('');
-      setFotoDocumento(null);
-
-      // Voltar para home após 2 segundos
-      setTimeout(() => {
-        router.back();
-      }, 2000);
-    } catch (error: any) {
-      console.error('Erro ao cadastrar cliente:', error);
-      setErrorMessage('Erro ao cadastrar cliente');
-    } finally {
-      setLoading(false);
-    }
+        codigoVerificacao,
+        fotoDocumento,
+      },
+    });
   };
 
   return (
