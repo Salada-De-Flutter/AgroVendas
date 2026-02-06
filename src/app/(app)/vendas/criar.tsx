@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import { File as ExpoFile, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import React, { useEffect, useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { API_ENDPOINTS } from '../../../config/api';
 import { useAuth } from '../../../contexts/AuthContext';
 
@@ -34,6 +36,9 @@ export default function CriarVendaScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [modalPdfVisivel, setModalPdfVisivel] = useState(false);
+  const [vendaIdCriada, setVendaIdCriada] = useState<string | null>(null);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
 
   // Verificar se é venda à vista (não permite alterar parcelas)
   const isVista = tipoVenda === 'vista_dinheiro' || tipoVenda === 'vista_agendado';
@@ -163,6 +168,76 @@ export default function CriarVendaScreen() {
     }
   };
 
+  // Baixar e abrir PDF
+  const baixarEAbrirPDF = async (vendaId: string) => {
+    setBaixandoPdf(true);
+    setErrorMessage('');
+
+    try {
+      // URL para baixar o PDF
+      const pdfUrl = API_ENDPOINTS.VENDAS.PDF(vendaId);
+      
+      // Criar arquivo no diretório de documentos
+      const fileName = `venda_${vendaId}_${Date.now()}.pdf`;
+      const file = new ExpoFile(Paths.document, fileName);
+
+      // Baixar o PDF usando fetch e salvar no arquivo
+      const response = await fetch(pdfUrl, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Erro ao baixar o PDF');
+      }
+
+      const blob = await response.blob();
+      const arrayBuffer = await blob.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+      
+      // Escrever no arquivo
+      await file.create();
+      const stream = file.writableStream();
+      const writer = stream.getWriter();
+      await writer.write(uint8Array);
+      await writer.close();
+
+      console.log('PDF baixado:', file.uri);
+
+      // Verificar se está disponível para compartilhar/abrir
+      const isAvailable = await Sharing.isAvailableAsync();
+      
+      if (isAvailable) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Comprovante de Venda Parcelada',
+          UTI: 'com.adobe.pdf',
+        });
+      } else {
+        setErrorMessage('Não foi possível abrir o PDF');
+      }
+    } catch (error: any) {
+      console.error('Erro ao baixar PDF:', error);
+      setErrorMessage('Erro ao baixar o PDF. Tente novamente.');
+    } finally {
+      setBaixandoPdf(false);
+    }
+  };
+
+  const handleBaixarPDF = async () => {
+    if (vendaIdCriada) {
+      await baixarEAbrirPDF(vendaIdCriada);
+      setModalPdfVisivel(false);
+      router.replace('/(app)/home');
+    }
+  };
+
+  const handlePularPDF = () => {
+    setModalPdfVisivel(false);
+    router.replace('/(app)/home');
+  };
+
   const handleSubmit = async () => {
     setErrorMessage('');
     setSuccessMessage('');
@@ -249,14 +324,30 @@ export default function CriarVendaScreen() {
 
       const data = await responseApi.json();
       console.log('Resposta do cadastro de venda:', data);
+      console.log('Tipo de venda:', tipoVenda);
+      console.log('vendaId na resposta:', data.vendaId);
+      console.log('id na resposta:', data.id);
 
       if (responseApi.ok && data.sucesso) {
         console.log('✅ Venda cadastrada com sucesso!');
         setSuccessMessage('Venda cadastrada com sucesso!');
 
-        setTimeout(() => {
-          router.replace('/(app)/home');
-        }, 2000);
+        // Pegar vendaId (pode vir como 'vendaId' ou 'id')
+        const vendaId = data.vendaId || data.id;
+        console.log('vendaId final:', vendaId);
+
+        // Se for venda parcelada, perguntar se deseja baixar o PDF
+        if (tipoVenda === 'parcelado' && vendaId) {
+          console.log('🔔 EXIBINDO MODAL DE PDF');
+          setVendaIdCriada(vendaId);
+          setModalPdfVisivel(true);
+        } else {
+          console.log('⚠️ Não exibindo modal. Motivo:', {
+            tipoVenda,
+            vendaId,
+            condicao: tipoVenda === 'parcelado' && vendaId
+          });
+        }
       } else {
         setErrorMessage(data.mensagem || 'Erro ao cadastrar venda');
       }
@@ -452,6 +543,58 @@ export default function CriarVendaScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Modal de Download do PDF */}
+      <Modal
+        visible={modalPdfVisivel}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handlePularPDF}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalIconContainer}>
+              <Ionicons name="document-text" size={64} color="#4CAF50" />
+            </View>
+            
+            <Text style={styles.modalTitle}>Venda Cadastrada!</Text>
+            <Text style={styles.modalMessage}>
+              Deseja baixar e imprimir o PDF do parcelamento agora?
+            </Text>
+
+            {errorMessage ? (
+              <View style={styles.modalErrorContainer}>
+                <Text style={styles.modalErrorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonSecondary]}
+                onPress={handlePularPDF}
+                disabled={baixandoPdf}
+              >
+                <Text style={styles.modalButtonTextSecondary}>Agora Não</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, styles.modalButtonPrimary, baixandoPdf && styles.modalButtonDisabled]}
+                onPress={handleBaixarPDF}
+                disabled={baixandoPdf}
+              >
+                {baixandoPdf ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="download" size={20} color="#ffffff" />
+                    <Text style={styles.modalButtonTextPrimary}>Baixar PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -679,5 +822,93 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 8,
+  },
+  // Modal de PDF
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#2a2a2a',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+  },
+  modalIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#1a3a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 16,
+    color: '#b0b0b0',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  modalErrorContainer: {
+    backgroundColor: '#3a1a1a',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    width: '100%',
+  },
+  modalErrorText: {
+    color: '#ff4444',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    borderRadius: 10,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  modalButtonPrimary: {
+    backgroundColor: '#4CAF50',
+  },
+  modalButtonSecondary: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#3a3a3a',
+  },
+  modalButtonDisabled: {
+    opacity: 0.6,
+  },
+  modalButtonTextPrimary: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalButtonTextSecondary: {
+    color: '#b0b0b0',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

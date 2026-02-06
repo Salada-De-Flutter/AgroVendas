@@ -11,6 +11,7 @@ interface TipoVendaOption {
   descricao: string;
   icon: string;
   cor: string;
+  implementado: boolean;
 }
 
 const tiposVenda: TipoVendaOption[] = [
@@ -20,6 +21,7 @@ const tiposVenda: TipoVendaOption[] = [
     descricao: 'Pagamento imediato em dinheiro',
     icon: 'cash',
     cor: '#4CAF50',
+    implementado: false,
   },
   {
     id: 'vista_agendado',
@@ -27,6 +29,7 @@ const tiposVenda: TipoVendaOption[] = [
     descricao: 'Pagamento à vista em data futura',
     icon: 'calendar',
     cor: '#2196F3',
+    implementado: false,
   },
   {
     id: 'parcelado',
@@ -34,6 +37,7 @@ const tiposVenda: TipoVendaOption[] = [
     descricao: 'Pagamento em múltiplas parcelas',
     icon: 'card',
     cor: '#FF9800',
+    implementado: true,
   },
 ];
 
@@ -58,6 +62,13 @@ export default function SelecionarTipoRotaScreen() {
   const handleContinuar = () => {
     if (!tipoSelecionado) {
       setErrorMessage('Selecione o tipo de venda');
+      return;
+    }
+
+    // Verificar se o tipo está implementado
+    const tipoSelecionadoObj = tiposVenda.find(t => t.id === tipoSelecionado);
+    if (!tipoSelecionadoObj?.implementado) {
+      setErrorMessage('Este tipo de venda ainda não está disponível');
       return;
     }
 
@@ -119,18 +130,34 @@ export default function SelecionarTipoRotaScreen() {
               style={[
                 styles.tipoCard,
                 tipoSelecionado === tipo.id && styles.tipoCardSelecionado,
+                !tipo.implementado && styles.tipoCardDesabilitado,
               ]}
-              onPress={() => setTipoSelecionado(tipo.id)}
+              onPress={() => tipo.implementado && setTipoSelecionado(tipo.id)}
+              disabled={!tipo.implementado}
             >
               <View style={[styles.tipoIcon, { backgroundColor: tipo.cor + '20' }]}>
                 <Ionicons name={tipo.icon as any} size={32} color={tipo.cor} />
               </View>
               <View style={styles.tipoInfo}>
-                <Text style={styles.tipoTitulo}>{tipo.titulo}</Text>
-                <Text style={styles.tipoDescricao}>{tipo.descricao}</Text>
+                <View style={styles.tipoTituloRow}>
+                  <Text style={[styles.tipoTitulo, !tipo.implementado && styles.tipoTituloDesabilitado]}>
+                    {tipo.titulo}
+                  </Text>
+                  {!tipo.implementado && (
+                    <View style={styles.emBreveBadge}>
+                      <Text style={styles.emBreveText}>Em breve</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.tipoDescricao, !tipo.implementado && styles.tipoDescricaoDesabilitada]}>
+                  {tipo.descricao}
+                </Text>
               </View>
-              {tipoSelecionado === tipo.id && (
+              {tipoSelecionado === tipo.id && tipo.implementado && (
                 <Ionicons name="checkmark-circle" size={28} color={tipo.cor} />
+              )}
+              {!tipo.implementado && (
+                <Ionicons name="lock-closed" size={24} color="#666666" />
               )}
             </TouchableOpacity>
           ))}
@@ -249,6 +276,10 @@ const styles = StyleSheet.create({
     borderColor: '#4CAF50',
     backgroundColor: '#1a3a1a',
   },
+  tipoCardDesabilitado: {
+    opacity: 0.5,
+    backgroundColor: '#1a1a1a',
+  },
   tipoIcon: {
     width: 56,
     height: 56,
@@ -260,15 +291,37 @@ const styles = StyleSheet.create({
   tipoInfo: {
     flex: 1,
   },
+  tipoTituloRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    gap: 8,
+  },
   tipoTitulo: {
     fontSize: 16,
     fontWeight: '600',
     color: '#ffffff',
-    marginBottom: 4,
+  },
+  tipoTituloDesabilitado: {
+    color: '#666666',
   },
   tipoDescricao: {
     fontSize: 13,
     color: '#b0b0b0',
+  },
+  tipoDescricaoDesabilitada: {
+    color: '#666666',
+  },
+  emBreveBadge: {
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+  },
+  emBreveText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   rotaCard: {
     flexDirection: 'row',

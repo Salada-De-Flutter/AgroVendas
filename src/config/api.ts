@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
     UPDATE: (id: string) => `${API_URL}/vendas/${id}`,
     DELETE: (id: string) => `${API_URL}/vendas/${id}`,
     BY_CLIENTE: (clienteId: string) => `${API_URL}/vendas/cliente/${clienteId}`,
+    PDF: (id: string) => `${API_URL}/vendas/${id}/pdf`,
   },
 };
 
