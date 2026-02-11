@@ -58,6 +58,7 @@ export default function SelecionarTipoRotaScreen() {
   const clienteId = params.clienteId as string;
   const clienteNome = params.clienteNome as string;
   const clienteCpf = params.clienteCpf as string;
+  const clienteTelefone = params.clienteTelefone as string;
 
   const handleContinuar = () => {
     if (!tipoSelecionado) {
@@ -81,6 +82,7 @@ export default function SelecionarTipoRotaScreen() {
         clienteId,
         clienteNome,
         clienteCpf,
+        clienteTelefone,
         tipoVenda: tipoSelecionado,
         rotaId: rotaPadrao.id.toString(),
         rotaNome: rotaPadrao.nome,

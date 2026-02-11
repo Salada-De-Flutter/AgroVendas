@@ -1,5 +1,5 @@
 // Detecção de ambiente
-const useProdApi = process.env.EXPO_PUBLIC_USE_PROD_API === 'true';
+export const useProdApi = process.env.EXPO_PUBLIC_USE_PROD_API === 'true';
 
 // URLs
 const PROD_API_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.agrosystemapp.com/api';
@@ -28,6 +28,7 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => `${API_URL}/vendas/${id}`,
     BY_CLIENTE: (clienteId: string) => `${API_URL}/vendas/cliente/${clienteId}`,
     PDF: (id: string) => `${API_URL}/vendas/${id}/pdf`,
+    SEND_VERIFICATION: `${API_URL}/vendas/enviar-codigo-verificacao`,
   },
 };
 

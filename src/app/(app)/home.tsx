@@ -1,15 +1,48 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import * as FileSystem from 'expo-file-system/legacy';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as Sharing from 'expo-sharing';
 import React, { useRef, useState } from 'react';
-import { Animated, PanResponder, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, PanResponder, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 
 const DRAWER_WIDTH = 280;
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const params = useLocalSearchParams();
+  const { user, token, signOut } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [modalPdfVisivel, setModalPdfVisivel] = useState(false);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  React.useEffect(() => {
+    // Detecta parâmetro de modal PDF
+    if (params.mostrarModalPdf === 'true' && params.vendaId) {
+      // Corrigir URL absoluta para web/mobile
+      let baseUrl = '';
+      // Sempre priorizar variável de ambiente de produção
+      if (process.env.EXPO_PUBLIC_API_URL) {
+        baseUrl = process.env.EXPO_PUBLIC_API_URL;
+      } else if (typeof window !== 'undefined' && window.location && window.location.origin !== 'http://localhost:8081') {
+        baseUrl = window.location.origin;
+      } else {
+        baseUrl = '';
+      }
+      // Corrigir duplicação de /api/
+      let pdfPath = `/api/vendas/${params.vendaId}/pdf`;
+      if (baseUrl.endsWith('/api')) {
+        pdfPath = `/vendas/${params.vendaId}/pdf`;
+      }
+      setPdfUrl(`${baseUrl}${pdfPath}`);
+      setModalPdfVisivel(true);
+      // Remove o parâmetro para não mostrar de novo
+      setTimeout(() => {
+        router.setParams?.({ mostrarModalPdf: undefined, vendaId: undefined });
+      }, 500);
+    }
+  }, [params]);
   
   const drawerTranslateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -79,7 +112,128 @@ export default function HomeScreen() {
   ).current;
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
+      {/* Modal de Download do PDF */}
+      {modalPdfVisivel && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#2a2a2a', borderRadius: 20, padding: 24, width: '90%', maxWidth: 400, alignItems: 'center', borderWidth: 1, borderColor: '#3a3a3a' }}>
+            <Ionicons name="document-text" size={64} color="#4CAF50" style={{ marginBottom: 20 }} />
+            <Text style={{ fontSize: 24, fontWeight: 'bold', color: '#ffffff', marginBottom: 12, textAlign: 'center' }}>Venda Parcelada Cadastrada!</Text>
+            <Text style={{ fontSize: 16, color: '#b0b0b0', textAlign: 'center', marginBottom: 24, lineHeight: 22 }}>
+              Deseja baixar o PDF do carnê do cliente? Você poderá visualizar, compartilhar ou imprimir.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+              <TouchableOpacity
+                style={{ flex: 1, borderRadius: 10, padding: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: 'transparent', borderWidth: 2, borderColor: '#3a3a3a' }}
+                onPress={() => setModalPdfVisivel(false)}
+                disabled={baixandoPdf}
+              >
+                <Text style={{ color: '#b0b0b0', fontSize: 16, fontWeight: '600' }}>Agora Não</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1, borderRadius: 10, padding: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#4CAF50', opacity: baixandoPdf ? 0.6 : 1 }}
+                onPress={async () => {
+                  setBaixandoPdf(true);
+                  setErrorMessage('');
+                  try {
+                    console.log('[PDF] Iniciando download do PDF...');
+                    console.log('[PDF] pdfUrl:', pdfUrl);
+                    // Extrair vendaId da URL do PDF
+                    let vendaIdFromUrl = undefined;
+                    if (pdfUrl) {
+                      const match = pdfUrl.match(/\/vendas\/(\d+)\/pdf/);
+                      if (match && match[1]) {
+                        vendaIdFromUrl = match[1];
+                      }
+                    }
+                    console.log('[PDF] vendaId extraído:', vendaIdFromUrl);
+                    if (!pdfUrl || !vendaIdFromUrl) throw new Error('PDF não disponível');
+                    // Baixar PDF usando nova API
+                    const fileName = `venda_${vendaIdFromUrl}_${Date.now()}.pdf`;
+                    // Detectar ambiente web
+                    const isWeb = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+                    console.log('[PDF] Ambiente web:', isWeb);
+                    // Buscar PDF como blob
+                    const response = await fetch(pdfUrl, {
+                      headers: {
+                        'Authorization': `Bearer ${token || ''}`,
+                      },
+                    });
+                    if (!response.ok) throw new Error('Erro ao baixar PDF do servidor');
+                    const blob = await response.blob();
+                    if (isWeb) {
+                      // Web: acionar download automático
+                      const url = window.URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = fileName;
+                      document.body.appendChild(a);
+                      a.click();
+                      setTimeout(() => {
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                      }, 100);
+                      console.log('[PDF] Download web disparado:', fileName);
+                    } else {
+                      // Mobile: salvar e compartilhar
+                      // Converter Blob para base64 usando FileReader (compatível Android/React Native)
+                      const fileUri = (FileSystem.documentDirectory ?? '') + fileName;
+                      console.log('[PDF] fileUri:', fileUri);
+                      const getBase64FromBlob = (blob: Blob): Promise<string> => {
+                        return new Promise((resolve, reject) => {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            const base64data = (reader.result as string).split(',')[1];
+                            resolve(base64data);
+                          };
+                          reader.onerror = reject;
+                          reader.readAsDataURL(blob);
+                        });
+                      };
+                      const base64 = await getBase64FromBlob(blob);
+                      await FileSystem.writeAsStringAsync(fileUri, base64, { encoding: FileSystem.EncodingType.Base64 });
+                      console.log('[PDF] Download concluído:', fileUri);
+                      // Verificar se pode compartilhar
+                      const canShare = await Sharing.isAvailableAsync();
+                      console.log('[PDF] Sharing disponível:', canShare);
+                      if (canShare) {
+                        await Sharing.shareAsync(fileUri, {
+                          mimeType: 'application/pdf',
+                          dialogTitle: 'Abrir PDF com...',
+                          UTI: 'com.adobe.pdf',
+                        });
+                        console.log('[PDF] Compartilhamento aberto');
+                      } else {
+                        setErrorMessage('Não é possível abrir o PDF neste dispositivo');
+                        Alert.alert('Erro', 'Não é possível abrir o PDF neste dispositivo');
+                        console.log('[PDF] Não é possível abrir o PDF neste dispositivo');
+                      }
+                    }
+                  } catch (e) {
+                    setErrorMessage('Erro ao baixar PDF. Tente novamente.');
+                    Alert.alert('Erro', 'Erro ao baixar PDF. Tente novamente.');
+                    console.error('[PDF] Erro ao baixar PDF:', e);
+                  } finally {
+                    setBaixandoPdf(false);
+                    setModalPdfVisivel(false);
+                  }
+                }}
+                disabled={baixandoPdf}
+              >
+                {baixandoPdf ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : (
+                  <>
+                    <Ionicons name="download" size={20} color="#ffffff" />
+                    <Text style={{ color: '#ffffff', fontSize: 16, fontWeight: '600', marginLeft: 8 }}>Baixar PDF</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
       {/* Drawer Overlay */}
       {drawerOpen && (
         <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
@@ -170,7 +324,7 @@ export default function HomeScreen() {
       {/* Container Principal */}
       <View style={styles.mainContainer} {...panResponder.panHandlers}>
         {/* Header */}
-        <View style={styles.header}>
+        <View style={[styles.header, Platform.OS === 'android' ? { paddingTop: 40 } : {}]}>
           <View>
             <Text style={styles.greeting}>Olá,</Text>
             <Text style={styles.userName}>{user?.nome || 'Vendedor'}</Text>
@@ -192,54 +346,59 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {/* Ação Principal */}
-          <TouchableOpacity style={styles.mainActionButton} onPress={() => router.push('/(app)/clientes/adicionar')}>
-            <View style={styles.mainActionIcon}>
-              <Ionicons name="person-add" size={32} color="#ffffff" />
-            </View>
-            <View style={styles.mainActionContent}>
-              <Text style={styles.mainActionTitle}>Adicionar Novo Cliente</Text>
-              <Text style={styles.mainActionSubtitle}>Cadastrar um cliente no sistema</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={28} color="#4CAF50" />
-          </TouchableOpacity>
+          {/* Cards das funções com espaçamento */}
+          <View style={styles.cardsContainer}>
+            {/* Card 1: Adicionar Novo Cliente */}
+            <TouchableOpacity style={styles.mainActionButton} onPress={() => router.push('/(app)/clientes/adicionar')}>
+              <View style={[styles.mainActionIcon, { backgroundColor: '#4CAF50' }]}> 
+                <Ionicons name="person-add" size={32} color="#ffffff" />
+              </View>
+              <View style={styles.mainActionContent}>
+                <Text style={styles.mainActionTitle}>Adicionar Novo Cliente</Text>
+                <Text style={styles.mainActionSubtitle}>Cadastrar um cliente no sistema</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={28} color="#4CAF50" />
+            </TouchableOpacity>
 
-          {/* Nova Venda */}
-          <TouchableOpacity style={styles.secondaryActionButton} onPress={() => router.push('/(app)/vendas/selecionar-cliente')}>
-            <View style={[styles.mainActionIcon, { backgroundColor: '#2196F3' }]}>
-              <Ionicons name="cart" size={32} color="#ffffff" />
-            </View>
-            <View style={styles.mainActionContent}>
-              <Text style={styles.mainActionTitle}>Nova Venda</Text>
-              <Text style={styles.mainActionSubtitle}>Registrar uma venda</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={28} color="#2196F3" />
-          </TouchableOpacity>
+            <View style={{ height: 24 }} />
+
+            {/* Card 2: Pesquisar Cliente */}
+            <TouchableOpacity style={styles.mainActionButton} onPress={() => router.push({ pathname: '/(app)/vendas/selecionar-cliente', params: { origem: 'pesquisa' } })}>
+              <View style={[styles.mainActionIcon, { backgroundColor: '#8BC34A' }]}> 
+                <Ionicons name="people-outline" size={32} color="#ffffff" />
+              </View>
+              <View style={styles.mainActionContent}>
+                <Text style={styles.mainActionTitle}>Pesquisar Cliente</Text>
+                <Text style={styles.mainActionSubtitle}>Buscar e selecionar cliente</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={28} color="#4CAF50" />
+            </TouchableOpacity>
+
+            <View style={{ height: 24 }} />
+
+            {/* Card 3: Nova Venda */}
+            <TouchableOpacity style={styles.mainActionButton} onPress={() => router.push({ pathname: '/(app)/vendas/selecionar-cliente', params: { origem: 'nova-venda' } })}>
+              <View style={[styles.mainActionIcon, { backgroundColor: '#2196F3' }]}> 
+                <Ionicons name="cart" size={32} color="#ffffff" />
+              </View>
+              <View style={styles.mainActionContent}>
+                <Text style={styles.mainActionTitle}>Nova Venda</Text>
+                <Text style={styles.mainActionSubtitle}>Registrar uma venda</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={28} color="#4CAF50" />
+            </TouchableOpacity>
+          </View>
 
           <View style={{ height: 20 }} />
-        </ScrollView>
+          <Text style={styles.bottomMenuLabel}>Relatórios</Text>
 
-        {/* Menu Inferior */}
-        <View style={styles.bottomMenu}>
-          <TouchableOpacity style={styles.bottomMenuItem} onPress={openDrawer}>
-            <Ionicons name="menu" size={24} color="#4CAF50" />
-            <Text style={styles.bottomMenuLabel}>Menu</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomMenuItem}>
-            <Ionicons name="home" size={24} color="#4CAF50" />
-            <Text style={[styles.bottomMenuLabel, { color: '#4CAF50' }]}>Início</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.bottomMenuItem}>
-            <Ionicons name="bar-chart-outline" size={24} color="#b0b0b0" />
-            <Text style={styles.bottomMenuLabel}>Relatórios</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.bottomMenuItem} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color="#ff4444" />
             <Text style={styles.bottomMenuLabel}>Sair</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -362,6 +521,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexGrow: 1,
   },
+  cardsContainer: {
+    marginTop: 8,
+    marginBottom: 8,
+  },
   welcomeCard: {
     backgroundColor: '#2a2a2a',
     padding: 32,
@@ -400,7 +563,7 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: '#2196F3',
+    borderColor: '#4CAF50', // Verde igual ao mainActionButton
   },
   mainActionIcon: {
     width: 60,

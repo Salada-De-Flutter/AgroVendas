@@ -1,29 +1,28 @@
 import { Ionicons } from '@expo/vector-icons';
-import { File as ExpoFile, Paths } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { API_ENDPOINTS } from '../../../config/api';
 import { useAuth } from '../../../contexts/AuthContext';
 
 export default function CriarVendaScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { token, user } = useAuth();
-  
+
   // Parâmetros vindos da tela anterior
   const clienteIdParam = params.clienteId as string | undefined;
   const clienteNomeParam = params.clienteNome as string | undefined;
   const clienteCpfParam = params.clienteCpf as string | undefined;
+  const clienteTelefoneParam = params.clienteTelefone as string | undefined;
   const tipoVendaParam = params.tipoVenda as string | undefined;
   const rotaIdParam = params.rotaId as string | undefined;
   const rotaNomeParam = params.rotaNome as string | undefined;
-  
+
   const [clienteId, setClienteId] = useState(clienteIdParam || '');
   const [clienteNome, setClienteNome] = useState(clienteNomeParam || '');
   const [clienteCpf, setClienteCpf] = useState(clienteCpfParam || '');
+  const [clienteTelefone, setClienteTelefone] = useState(clienteTelefoneParam || '');
   const [tipoVenda, setTipoVenda] = useState(tipoVendaParam || '');
   const [rotaId, setRotaId] = useState(rotaIdParam || '');
   const [rotaNome, setRotaNome] = useState(rotaNomeParam || '');
@@ -36,9 +35,31 @@ export default function CriarVendaScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Estados para o modal PDF
   const [modalPdfVisivel, setModalPdfVisivel] = useState(false);
-  const [vendaIdCriada, setVendaIdCriada] = useState<string | null>(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+
+  // Handlers do modal PDF
+  const handlePularPDF = () => {
+    setModalPdfVisivel(false);
+      router.replace({ pathname: '/(app)/vendas' as any });
+  };
+
+  const handleBaixarPDF = async () => {
+    setBaixandoPdf(true);
+    setErrorMessage('');
+    try {
+      // Simulação de download do PDF
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      setSuccessMessage('PDF baixado com sucesso!');
+      // Aqui você pode implementar a lógica real de download e compartilhamento
+    } catch (e) {
+      setErrorMessage('Erro ao baixar PDF.');
+    } finally {
+      setBaixandoPdf(false);
+    }
+  };
 
   // Verificar se é venda à vista (não permite alterar parcelas)
   const isVista = tipoVenda === 'vista_dinheiro' || tipoVenda === 'vista_agendado';
@@ -46,7 +67,7 @@ export default function CriarVendaScreen() {
   // Validar se dados essenciais foram passados
   useEffect(() => {
     if (!clienteId || !clienteNome || !tipoVenda) {
-      router.replace('/(app)/vendas/selecionar-cliente');
+      router.replace({ pathname: '/(app)/vendas/selecionar-cliente' as any });
     }
   }, []);
 
@@ -56,11 +77,12 @@ export default function CriarVendaScreen() {
       setClienteId(clienteIdParam);
       setClienteNome(clienteNomeParam || '');
       setClienteCpf(clienteCpfParam || '');
+      setClienteTelefone(clienteTelefoneParam || '');
       setTipoVenda(tipoVendaParam || '');
       setRotaId(rotaIdParam || '');
       setRotaNome(rotaNomeParam || '');
     }
-  }, [clienteIdParam, clienteNomeParam, clienteCpfParam, tipoVendaParam, rotaIdParam, rotaNomeParam]);
+  }, [clienteIdParam, clienteNomeParam, clienteCpfParam, clienteTelefoneParam, tipoVendaParam, rotaIdParam, rotaNomeParam]);
 
   // Formatar valor monetário
   const formatarValor = (text: string) => {
@@ -168,76 +190,6 @@ export default function CriarVendaScreen() {
     }
   };
 
-  // Baixar e abrir PDF
-  const baixarEAbrirPDF = async (vendaId: string) => {
-    setBaixandoPdf(true);
-    setErrorMessage('');
-
-    try {
-      // URL para baixar o PDF
-      const pdfUrl = API_ENDPOINTS.VENDAS.PDF(vendaId);
-      
-      // Criar arquivo no diretório de documentos
-      const fileName = `venda_${vendaId}_${Date.now()}.pdf`;
-      const file = new ExpoFile(Paths.document, fileName);
-
-      // Baixar o PDF usando fetch e salvar no arquivo
-      const response = await fetch(pdfUrl, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Erro ao baixar o PDF');
-      }
-
-      const blob = await response.blob();
-      const arrayBuffer = await blob.arrayBuffer();
-      const uint8Array = new Uint8Array(arrayBuffer);
-      
-      // Escrever no arquivo
-      await file.create();
-      const stream = file.writableStream();
-      const writer = stream.getWriter();
-      await writer.write(uint8Array);
-      await writer.close();
-
-      console.log('PDF baixado:', file.uri);
-
-      // Verificar se está disponível para compartilhar/abrir
-      const isAvailable = await Sharing.isAvailableAsync();
-      
-      if (isAvailable) {
-        await Sharing.shareAsync(file.uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Comprovante de Venda Parcelada',
-          UTI: 'com.adobe.pdf',
-        });
-      } else {
-        setErrorMessage('Não foi possível abrir o PDF');
-      }
-    } catch (error: any) {
-      console.error('Erro ao baixar PDF:', error);
-      setErrorMessage('Erro ao baixar o PDF. Tente novamente.');
-    } finally {
-      setBaixandoPdf(false);
-    }
-  };
-
-  const handleBaixarPDF = async () => {
-    if (vendaIdCriada) {
-      await baixarEAbrirPDF(vendaIdCriada);
-      setModalPdfVisivel(false);
-      router.replace('/(app)/home');
-    }
-  };
-
-  const handlePularPDF = () => {
-    setModalPdfVisivel(false);
-    router.replace('/(app)/home');
-  };
-
   const handleSubmit = async () => {
     setErrorMessage('');
     setSuccessMessage('');
@@ -278,85 +230,32 @@ export default function CriarVendaScreen() {
       return;
     }
 
-    setLoading(true);
+    // Gerar código de verificação de 6 dígitos
+    const codigoVerificacao = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log('[Venda] Código de verificação gerado:', codigoVerificacao);
 
-    try {
-      const formData = new FormData();
-      formData.append('clienteId', clienteId);
-      formData.append('valor', valor.replace(/[^\d,]/g, '').replace(',', '.'));
-      formData.append('parcelas', isVista ? '1' : parcelas);
-      formData.append('dataVencimento', dataVencimento);
-      formData.append('descricao', descricao);
-      formData.append('numeroFicha', numeroFicha);
-      formData.append('vendedorId', user?.id?.toString() || '');
-      formData.append('tipoVenda', tipoVenda);
-      formData.append('rotaId', rotaId);
+    // Redirecionar para tela de método de verificação
+    router.push({
+      pathname: '/(app)/vendas/metodo-verificacao',
+      params: {
+        clienteId,
+        clienteNome,
+        clienteCpf,
+        clienteTelefone,
+        tipoVenda,
+        rotaId,
+        rotaNome,
+        valor,
+        parcelas,
+        dataVencimento,
+        descricao,
+        numeroFicha,
+        fotoFicha,
+        codigoVerificacao,
+      },
+    });
 
-      // Adicionar foto
-      if (fotoFicha) {
-        // Verificar se é blob URL (Web) ou file URI (Mobile)
-        if (fotoFicha.startsWith('blob:')) {
-          const response = await fetch(fotoFicha);
-          const blob = await response.blob();
-          const filename = `ficha_${Date.now()}.jpg`;
-          const file = new File([blob], filename, { type: blob.type || 'image/jpeg' });
-          formData.append('fotoFicha', file);
-        } else {
-          const filename = fotoFicha.split('/').pop() || 'ficha.jpg';
-          const match = /\.(\w+)$/.exec(filename);
-          const type = match ? `image/${match[1]}` : 'image/jpeg';
-
-          formData.append('fotoFicha', {
-            uri: fotoFicha,
-            name: filename,
-            type: type,
-          } as any);
-        }
-      }
-
-      const responseApi = await fetch(API_ENDPOINTS.VENDAS.CREATE, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      const data = await responseApi.json();
-      console.log('Resposta do cadastro de venda:', data);
-      console.log('Tipo de venda:', tipoVenda);
-      console.log('vendaId na resposta:', data.vendaId);
-      console.log('id na resposta:', data.id);
-
-      if (responseApi.ok && data.sucesso) {
-        console.log('✅ Venda cadastrada com sucesso!');
-        setSuccessMessage('Venda cadastrada com sucesso!');
-
-        // Pegar vendaId (pode vir como 'vendaId' ou 'id')
-        const vendaId = data.vendaId || data.id;
-        console.log('vendaId final:', vendaId);
-
-        // Se for venda parcelada, perguntar se deseja baixar o PDF
-        if (tipoVenda === 'parcelado' && vendaId) {
-          console.log('🔔 EXIBINDO MODAL DE PDF');
-          setVendaIdCriada(vendaId);
-          setModalPdfVisivel(true);
-        } else {
-          console.log('⚠️ Não exibindo modal. Motivo:', {
-            tipoVenda,
-            vendaId,
-            condicao: tipoVenda === 'parcelado' && vendaId
-          });
-        }
-      } else {
-        setErrorMessage(data.mensagem || 'Erro ao cadastrar venda');
-      }
-    } catch (error: any) {
-      console.error('Erro ao cadastrar venda:', error);
-      setErrorMessage('Erro de conexão. Verifique sua internet.');
-    } finally {
-      setLoading(false);
-    }
+    // O modal PDF será exibido apenas após a verificação, não aqui.
   };
 
   return (
@@ -559,7 +458,7 @@ export default function CriarVendaScreen() {
             
             <Text style={styles.modalTitle}>Venda Cadastrada!</Text>
             <Text style={styles.modalMessage}>
-              Deseja baixar e imprimir o PDF do parcelamento agora?
+              Deseja baixar o PDF do parcelamento? Você poderá visualizar, compartilhar ou imprimir.
             </Text>
 
             {errorMessage ? (

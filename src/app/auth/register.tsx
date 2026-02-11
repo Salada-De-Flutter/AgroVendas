@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { API_ENDPOINTS } from '../../config/api';
+import { useProdApi } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function RegisterScreen() {
@@ -45,9 +45,10 @@ export default function RegisterScreen() {
     setLoading(true);
 
     try {
-      console.log('Enviando cadastro para:', API_ENDPOINTS.AUTH.REGISTER);
-      
-      const response = await fetch(API_ENDPOINTS.AUTH.REGISTER, {
+      const API_URL = useProdApi ? process.env.EXPO_PUBLIC_API_URL || 'https://api.agrosystemapp.com/api' : 'http://localhost:3000/api';
+      const registerUrl = `${API_URL}/auth/register`;
+      console.log('Enviando cadastro para:', registerUrl);
+      const response = await fetch(registerUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

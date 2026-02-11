@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { API_ENDPOINTS } from '../../config/api';
+import { useProdApi } from '../../config/api';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function LoginScreen() {
@@ -25,9 +25,10 @@ export default function LoginScreen() {
     setLoading(true);
 
     try {
-      console.log('Enviando login para:', API_ENDPOINTS.AUTH.LOGIN);
-      
-      const response = await fetch(API_ENDPOINTS.AUTH.LOGIN, {
+      const API_URL = useProdApi ? process.env.EXPO_PUBLIC_API_URL || 'https://api.agrosystemapp.com/api' : 'http://localhost:3000/api';
+      const loginUrl = `${API_URL}/auth/login`;
+      console.log('Enviando login para:', loginUrl);
+      const response = await fetch(loginUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

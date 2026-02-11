@@ -29,35 +29,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadStorageData();
+    
+    // Timeout de segurança: se depois de 5 segundos ainda estiver carregando, força finalizar
+    const timeout = setTimeout(() => {
+      if (loading) {
+        console.warn('[Auth] Timeout no carregamento do AuthContext, forçando finalização');
+        setLoading(false);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timeout);
   }, []);
 
   // Gerenciar navegação baseada na autenticação
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === 'auth';
+    const inAuthGroup = String(segments[0]) === 'auth';
+    const inAppGroup = String(segments[0]) === '(app)';
+    // Corrige comparação de tipos: verifica se há segmento e se o primeiro é 'index' (como string)
+    const inRootIndex = !segments.length || String(segments[0]) === 'index';
 
-    if (!user && !inAuthGroup) {
-      // Usuário não autenticado, redirecionar para boas-vindas/login
+    console.log('[Nav] Segments:', segments, '| User:', user?.nome || 'none');
+
+    if (!user && !inAuthGroup && !inRootIndex) {
+      // Usuário não autenticado fora de auth/root, redirecionar para boas-vindas
+      console.log('[Nav] Redirecionando para root (não autenticado)');
       router.replace('/');
-    } else if (user && inAuthGroup) {
-      // Usuário autenticado tentando acessar telas de auth, redirecionar para home
+    } else if (user && (inAuthGroup || inRootIndex)) {
+      // Usuário autenticado em auth ou root, redirecionar para home
+      console.log('[Nav] Redirecionando para home (autenticado)');
       router.replace('/(app)/home');
     }
   }, [user, segments, loading]);
 
   async function loadStorageData() {
     try {
+      console.log('[Auth] Iniciando carregamento do storage');
       const storedToken = await StorageService.getToken();
+      console.log('[Auth] Token carregado:', storedToken ? 'Existe' : 'Não existe');
+      
       const storedUser = await StorageService.getUser();
+      console.log('[Auth] User carregado:', storedUser ? storedUser.nome : 'Não existe');
 
       if (storedToken && storedUser) {
         setToken(storedToken);
         setUser(storedUser);
+        console.log('[Auth] Autenticação restaurada com sucesso');
+      } else {
+        console.log('[Auth] Nenhuma sessão anterior encontrada');
       }
     } catch (error) {
-      console.error('Erro ao carregar dados do storage:', error);
+      console.error('[Auth] Erro ao carregar dados do storage:', error);
     } finally {
+      console.log('[Auth] Finalizando carregamento do storage');
       setLoading(false);
     }
   }

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useProdApi } from '../../../config/api';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -11,41 +11,28 @@ interface Cliente {
   cpf: string;
   telefone?: string;
   email?: string;
-  vendedorNome?: string;
 }
 
-export default function SelecionarClienteScreen() {
+export default function ListaClientesScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams();
   const { token } = useAuth();
   const [busca, setBusca] = useState('');
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
-  const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     carregarClientes();
   }, []);
 
-  // Buscar no servidor quando o usuário digita (com debounce)
   useEffect(() => {
-    // Limpar timeout anterior
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Aguardar 500ms após parar de digitar para buscar
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
-      console.log('🔍 Busca com debounce:', busca);
       carregarClientes(busca.trim());
     }, 500);
-
-    // Cleanup
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, [busca]);
 
@@ -53,17 +40,9 @@ export default function SelecionarClienteScreen() {
     try {
       setLoading(true);
       setErrorMessage('');
-
-      // Construir URL com parâmetro de busca se fornecido
       const API_URL = useProdApi ? process.env.EXPO_PUBLIC_API_URL || 'https://api.agrosystemapp.com/api' : 'http://localhost:3000/api';
       let url = `${API_URL}/clientes`;
-      if (termoBusca) {
-        url += `?busca=${encodeURIComponent(termoBusca)}`;
-        console.log('🌐 Buscando no servidor:', termoBusca);
-      } else {
-        console.log('🌐 Carregando todos os clientes (sem busca)');
-      }
-
+      if (termoBusca) url += `?busca=${encodeURIComponent(termoBusca)}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: {
@@ -71,23 +50,13 @@ export default function SelecionarClienteScreen() {
           'Content-Type': 'application/json',
         },
       });
-
       const data = await response.json();
-      console.log('📄 Resposta da API:', {
-        sucesso: data.sucesso,
-        total: data.clientes?.length || 0,
-        termoBusca: termoBusca || 'sem busca'
-      });
-
       if (response.ok && data.sucesso) {
-        const clientesCarregados = data.clientes || [];
-        console.log('✅ Clientes definidos no estado:', clientesCarregados.length);
-        setClientes(clientesCarregados);
+        setClientes(data.clientes || []);
       } else {
         setErrorMessage(data.mensagem || 'Erro ao carregar clientes');
       }
     } catch (error) {
-      console.error('❌ Erro ao carregar clientes:', error);
       setErrorMessage('Erro de conexão. Verifique sua internet.');
     } finally {
       setLoading(false);
@@ -96,35 +65,17 @@ export default function SelecionarClienteScreen() {
 
   const formatarCPF = (cpf: string) => {
     const numeros = cpf.replace(/\D/g, '');
-    
     if (numeros.length !== 11) return cpf;
-    
     return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
   };
 
-  // Se for pesquisa, vai para detalhes; se for venda, vai para selecionar-tipo-rota
-  const selecionarCliente = (cliente: Cliente) => {
-    // Se origem=pesquisa, vai para detalhes; se origem=nova-venda, vai para selecionar-tipo-rota
-    if (params.origem === 'pesquisa') {
-      router.push({ pathname: '/(app)/clientes/detalhes', params: { clienteId: cliente.id.toString() } });
-    } else {
-      router.push({
-        pathname: '/(app)/vendas/selecionar-tipo-rota',
-        params: {
-          clienteId: cliente.id.toString(),
-          clienteNome: cliente.nome,
-          clienteCpf: cliente.cpf,
-          clienteTelefone: cliente.telefone || '',
-        },
-      });
-    }
+  const handleSelecionar = (cliente: Cliente) => {
+    // Navegar para tela de detalhes do cliente
+    router.push({ pathname: '/(app)/clientes/detalhes', params: { clienteId: cliente.id.toString() } });
   };
 
   const renderCliente = ({ item }: { item: Cliente }) => (
-    <TouchableOpacity
-      style={styles.clienteItem}
-      onPress={() => selecionarCliente(item)}
-    >
+    <TouchableOpacity style={styles.clienteItem} onPress={() => handleSelecionar(item)}>
       <View style={styles.clienteIconContainer}>
         <Ionicons name="person" size={24} color="#4CAF50" />
       </View>
@@ -139,16 +90,14 @@ export default function SelecionarClienteScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#1a1a1a" />
-      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="#ffffff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Selecionar Cliente</Text>
+        <Text style={styles.headerTitle}>Clientes</Text>
         <View style={{ width: 24 }} />
       </View>
-
       {/* Campo de Busca */}
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#666666" style={styles.searchIcon} />
@@ -157,10 +106,7 @@ export default function SelecionarClienteScreen() {
           placeholder="Buscar por nome ou CPF..."
           placeholderTextColor="#666666"
           value={busca}
-          onChangeText={(text) => {
-            setBusca(text);
-          }}
-          autoFocus
+          onChangeText={setBusca}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -170,7 +116,6 @@ export default function SelecionarClienteScreen() {
           </TouchableOpacity>
         )}
       </View>
-
       {/* Mensagem de erro */}
       {errorMessage ? (
         <View style={styles.errorContainer}>
@@ -178,7 +123,6 @@ export default function SelecionarClienteScreen() {
           <Text style={styles.errorText}>{errorMessage}</Text>
         </View>
       ) : null}
-
       {/* Lista de Clientes */}
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -344,10 +288,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#b0b0b0',
     marginBottom: 2,
-  },
-  clienteVendedor: {
-    fontSize: 12,
-    color: '#808080',
-    fontStyle: 'italic',
   },
 });

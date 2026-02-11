@@ -8,8 +8,11 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { loading, isAuthenticated } = useAuth();
 
+  console.log('[Welcome] Loading:', loading, '| Authenticated:', isAuthenticated);
+
   // Mostrar loading enquanto verifica autenticação
   if (loading) {
+    console.log('[Welcome] Mostrando tela de loading');
     return (
       <View style={styles.container}>
         <View style={styles.iconContainer}>
@@ -23,6 +26,7 @@ export default function WelcomeScreen() {
 
   // Se já está autenticado, não mostrar nada (o AuthContext vai redirecionar)
   if (isAuthenticated) {
+    console.log('[Welcome] Usuario autenticado, aguardando redirecionamento');
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#4CAF50" />
@@ -30,6 +34,7 @@ export default function WelcomeScreen() {
     );
   }
 
+  console.log('[Welcome] Mostrando tela de boas-vindas');
   return (
     <View style={styles.container}>
       {/* Ícone principal */}
